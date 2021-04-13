@@ -4,8 +4,9 @@ import "github.com/gorilla/websocket"
 
 // UserStruct is used for sending users with socket id
 type UserStruct struct {
-	Username string `json:"username"`
-	UserID   string `json:"userID"`
+	UserName string `json:"username"`
+	// UserID   string `json:"userID"`
+	//UserName string `json:"username"`
 }
 
 // SocketEventStruct struct of socket events
@@ -25,6 +26,7 @@ type Client struct {
 
 // JoinDisconnectPayload will have struct for payload of join disconnect
 type JoinDisconnectPayload struct {
-	Users  []UserStruct `json:"users"`
-	UserID string       `json:"userID"`
+	Users []UserStruct `json:"users"`
+	// UserID string       `json:"userID"`
+	UserName string `json:"username"`
 }

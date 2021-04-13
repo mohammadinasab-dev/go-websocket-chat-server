@@ -19,8 +19,9 @@ type Message struct {
 }
 
 type Payload struct {
-	UserID  string `json:"userID"`
-	Message string `json:"message"`
+	// UserID  string `json:"userID"`
+	UserName string `json:"username"`
+	Message  string `json:"message"`
 }
 
 func main() {
@@ -73,7 +74,8 @@ func send(conn *websocket.Conn) {
 		}
 		log.Println(text)
 		mp := make(map[string]interface{})
-		mp["userID"] = payload.UserID
+		// mp["userID"] = payload.UserID
+		mp["username"] = payload.UserName
 		mp["message"] = payload.Message
 		m := Message{
 			EventName:    "message",

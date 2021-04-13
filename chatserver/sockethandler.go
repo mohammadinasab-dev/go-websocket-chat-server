@@ -3,11 +3,9 @@ package chatserver
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"log"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
@@ -20,13 +18,11 @@ const (
 
 // CreateNewSocketUser creates a new socket user
 func CreateNewSocketUser(hub *Hub, connection *websocket.Conn, username string) {
-	uniqueID := uuid.New()
 	client := &Client{
 		hub:                 hub,
 		webSocketConnection: connection,
 		send:                make(chan SocketEventStruct),
 		username:            username,
-		userID:              uniqueID.String(),
 	}
 
 	go client.writePump()
@@ -59,9 +55,9 @@ func HandleUserDisconnectEvent(hub *Hub, client *Client) {
 }
 
 // EmitToSpecificClient will emit the socket event to specific socket user
-func EmitToSpecificClient(hub *Hub, payload SocketEventStruct, userID string) {
+func EmitToSpecificClient(hub *Hub, payload SocketEventStruct, userNmae string) {
 	for client := range hub.clients {
-		if client.userID == userID {
+		if client.username == userNmae {
 			select {
 			case client.send <- payload:
 			default:
@@ -92,9 +88,8 @@ func handleSocketPayloadEvents(client *Client, socketEventPayload SocketEventStr
 		BroadcastSocketEventToAllClient(client.hub, SocketEventStruct{
 			EventName: socketEventPayload.EventName,
 			EventPayload: JoinDisconnectPayload{
-				//UserID: client.userID,
-				UserID: getUsernameByUserID(client.hub, client.userID),
-				Users:  getAllConnectedUsers(client.hub),
+				UserName: client.username,
+				Users:    getAllConnectedUsers(client.hub),
 			},
 		})
 
@@ -103,22 +98,20 @@ func handleSocketPayloadEvents(client *Client, socketEventPayload SocketEventStr
 		BroadcastSocketEventToAllClient(client.hub, SocketEventStruct{
 			EventName: socketEventPayload.EventName,
 			EventPayload: JoinDisconnectPayload{
-				UserID: client.userID,
-				Users:  getAllConnectedUsers(client.hub),
+				UserName: client.username,
+				Users:    getAllConnectedUsers(client.hub),
 			},
 		})
 
 	case "message":
 		log.Printf("Message Event triggered")
-		selectedUserID := socketEventPayload.EventPayload.(map[string]interface{})["userID"].(string)
-		log.Println("selecteduserID")
+		selectedUserName := socketEventPayload.EventPayload.(map[string]interface{})["username"].(string)
 		socketEventResponse.EventName = "message response"
 		socketEventResponse.EventPayload = map[string]interface{}{
-			"username": getUsernameByUserID(client.hub, selectedUserID),
+			"username": selectedUserName,
 			"message":  socketEventPayload.EventPayload.(map[string]interface{})["message"],
-			//"userID":   selectedUserID,
 		}
-		EmitToSpecificClient(client.hub, socketEventResponse, selectedUserID)
+		EmitToSpecificClient(client.hub, socketEventResponse, selectedUserName)
 	}
 }
 
@@ -136,8 +129,7 @@ func getAllConnectedUsers(hub *Hub) []UserStruct {
 	var users []UserStruct
 	for singleClient := range hub.clients {
 		users = append(users, UserStruct{
-			Username: singleClient.username,
-			UserID:   singleClient.userID,
+			UserName: singleClient.username,
 		})
 	}
 	return users
@@ -181,7 +173,6 @@ func (c *Client) writePump() {
 	for {
 		select {
 		case payload, ok := <-c.send:
-			fmt.Println("c.send is: ", payload)
 			reqBodyBytes := new(bytes.Buffer)
 			json.NewEncoder(reqBodyBytes).Encode(payload)
 			finalPayload := reqBodyBytes.Bytes()
@@ -200,7 +191,6 @@ func (c *Client) writePump() {
 			w.Write(finalPayload)
 
 			n := len(c.send)
-			fmt.Println("the lenght of channel is: ", n)
 			for i := 0; i < n; i++ {
 				json.NewEncoder(reqBodyBytes).Encode(<-c.send)
 				w.Write(reqBodyBytes.Bytes())
